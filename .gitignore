@@ -1,3 +1,9 @@
+.idea/
+/tmp/
+dump.rdb
+.project
+.vscode
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
