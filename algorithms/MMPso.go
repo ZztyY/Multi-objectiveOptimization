@@ -54,18 +54,30 @@ func (self *MMPso) Init(popSize int, totalFunc int, parallelFunc int, generation
 
 func (self *MMPso) Run() {
 	self.StartTime = time.Now()
-	self.CanSerAPro = [][]int{} // todo
-	self.PSet = self.randomPathinitial()
+	self.CanSerAPro = [][]int{}               // todo
+	self.PSet = self.randomPathinitial(1, 50) // todo
 }
 
-func (self *MMPso) randomPathinitial() []basic_class.BasicSolution {
+func (self *MMPso) randomPathinitial(processNum int, taskNumPro int) []basic_class.BasicSolution {
 	var pop []basic_class.BasicSolution
 
 	// 产生初始解
 	for i := 0; i < self.PopSize; i++ {
-		// tempPath := new(basic_class.BasicSolution)
-		// workNum := 0
+		tempPath := new(basic_class.BasicSolution)
+		tempPath.GenBasicSolution(processNum, taskNumPro)
+		workNum := 0
+		for p := 0; p < processNum; p++ {
+			for j := 0; j < taskNumPro; j++ {
+				nextCust := 0 // todo random
+				tempPath.Solution[workNum] = self.CanSerAPro[workNum][nextCust]
+				tempPath.X[workNum] = float64(tempPath.Solution[workNum])
+				workNum++
+			}
+		}
+		// tempPath.Objective todo
+		// UpdateReference(tempPath) // todo
 
+		pop = append(pop, *tempPath)
 	}
 	return pop
 }
