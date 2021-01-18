@@ -36,6 +36,16 @@ type Object struct {
 	AggreType_betPro int // 流程间聚合 0 加法；1乘法聚合；2max聚合；3min聚合
 }
 
+type QoSConstraint struct {
+	Num         int
+	QoSType     int
+	ProcessNum  int
+	StActivity  int
+	EndActivity int
+	ExpectBound float64
+	UlBound     float64 // 上限
+}
+
 // ===========Form1===========
 var ProcessNum int  // 流程数量（默认为1）
 var TaskNumPro int  // 每个流程中的任务数量(由于只考虑一个流程，所以就是任务总数量)
@@ -50,6 +60,8 @@ var dcCor = make([]DcCorrelation, 1500)
 var cor = make([]QoSCorrelation, 1500)
 var Obj = make([]Object, 10)
 var servie = make([]Service, 10000)
+var qosCon = make([]QoSConstraint, 1500)
+var qualMinMax = [10][2]float64{}
 
 // ===========Form4===========
 var runtimeFlag bool
