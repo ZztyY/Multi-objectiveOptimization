@@ -40,9 +40,9 @@ type MMPso struct {
 
 // 初始化
 func (self *MMPso) Init(popSize int, totalFunc int, parallelFunc int, generation int, w float64, c1 float64, c2 float64, c3 float64) {
-	self.MoeaqiBt = *new(basic_class.MoeaqiBt)                     // todo
-	self.BasicMooFunc = *new(basic_class.BasicMooFunc)             //todo
-	self.ConstraintsFitness = *new(basic_class.ConstraintsFitness) //todo
+	self.MoeaqiBt = *new(basic_class.MoeaqiBt)
+	self.BasicMooFunc = *new(basic_class.BasicMooFunc)
+	self.ConstraintsFitness = *new(basic_class.ConstraintsFitness)
 	self.PopSize = popSize
 	self.TotalFunc = totalFunc
 	self.ParallelFunc = parallelFunc
@@ -57,20 +57,20 @@ func (self *MMPso) Init(popSize int, totalFunc int, parallelFunc int, generation
 
 func (self *MMPso) Run() {
 	self.StartTime = time.Now()
-	self.CanSerAPro = [][]int{}                               // todo
-	self.PSet = self.randomPathinitial(self.ParallelFunc, 50) // todo
+	self.CanSerAPro = self.MoeaqiBt.ServicePreProcess()
+	self.PSet = self.randomPathinitial()
 
 	self.UpdateEXAIni(self.PSet) // 在初始化阶段，更新EXA为初始解集中的最优解PSet-pbest
 
 	for q := 0; q < self.Generation/2; q++ {
 		// 根据particleSet生成popsize个新解
-		offspringSet := self.GenNewPopPSO(self.PSet, self.ParallelFunc, 50) // 通过PSO算法对Pset初始解集操作生成后代offSpring todo taskNumPro
+		offspringSet := self.GenNewPopPSO(self.PSet) // 通过PSO算法对Pset初始解集操作生成后代offSpring
 
 		// 筛选前popsize个新解，放入pop，子代best
 		self.UpdateEXA(offspringSet)
 
 		// 根据EXA生成popsize个新解
-		SSet := self.GenNewPopBX(self.Exa, self.ParallelFunc, 50) // 交叉变异 todo taskNumPro
+		SSet := self.GenNewPopBX(self.Exa) // 交叉变异
 
 		// 筛选前popsize个新解，放入pop种群
 		self.UpdateEXA(SSet) // 对新解更新
@@ -81,31 +81,33 @@ func (self *MMPso) Run() {
 
 		// 将归一化的目标值重新计算为QoS值
 		for i := 0; i < len(self.Exa); i++ {
-			// self.Exa[i].Objective =  todo
-			conCount := 0.0 //todo   CF
+			self.Exa[i].Objective = self.ConstraintsFitness.CalFitnessMoo(self.Exa[i].Solution, true, true)
+			conCount := self.ConstraintsFitness.CalTotalConstraint(self.Exa[i].Solution, true, true, true)
 			self.Exa[i].Objective = append(self.Exa[i].Objective, conCount)
 		}
+
+		self.ArrResult = self.Exa
 	}
 }
 
-func (self *MMPso) randomPathinitial(processNum int, taskNumPro int) []basic_class.BasicSolution {
+func (self *MMPso) randomPathinitial() []basic_class.BasicSolution {
 	var pop []basic_class.BasicSolution
 
 	// 产生初始解
 	for i := 0; i < self.PopSize; i++ {
 		// 在起始变迁中随机选择第一个客户
 		tempPath := new(basic_class.BasicSolution)
-		tempPath.GenBasicSolution(processNum, taskNumPro)
+		tempPath.GenBasicSolution(basic_class.ProcessNum, basic_class.TaskNumPro)
 		workNum := 0
-		for p := 0; p < processNum; p++ {
-			for j := 0; j < taskNumPro; j++ {
+		for p := 0; p < basic_class.ProcessNum; p++ {
+			for j := 0; j < basic_class.TaskNumPro; j++ {
 				nextCust := util.RandomNumber(0, len(self.CanSerAPro[workNum])-1)
 				tempPath.Solution[workNum] = self.CanSerAPro[workNum][nextCust]
 				tempPath.X[workNum] = float64(tempPath.Solution[workNum])
 				workNum++
 			}
 		}
-		// tempPath.Objective todo
+		tempPath.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(tempPath.Solution, self.CorFlag, self.PenFlag)
 		self.UpdateReference(*tempPath)
 
 		pop = append(pop, *tempPath)
@@ -143,14 +145,14 @@ func Randomfloat64() float64 {
 }
 
 // PSO算法
-func (self *MMPso) GenNewPopPSO(particleSet []basic_class.BasicSolution, processNum int, taskNumPro int) []basic_class.BasicSolution {
-	var offspringSet []basic_class.BasicSolution
+func (self *MMPso) GenNewPopPSO(particleSet []basic_class.BasicSolution) []basic_class.BasicSolution {
+	offspringSet := make([]basic_class.BasicSolution, self.PopSize)
 	for i := 0; i < self.PopSize; i++ {
 		var offspring basic_class.BasicSolution
 		parent := particleSet[i]
 		index := 0
-		for p := 0; p < processNum; p++ {
-			for j := 0; j < taskNumPro; j++ {
+		for p := 0; p < basic_class.ProcessNum; p++ {
+			for j := 0; j < basic_class.TaskNumPro; j++ {
 				offspring.V[index] = self.W*parent.V[index] + self.C1*Randomfloat64()*(self.PBest[i].X[index]-parent.X[index]) + self.C2*Randomfloat64()*(self.GBest.X[index]-parent.X[index]) + self.C3*Randomfloat64()*(self.GBest.X[index]-self.PBest[i].X[index])
 				offspring.X[index] = parent.X[index] + offspring.V[index]
 				// 转化成整数
@@ -160,16 +162,16 @@ func (self *MMPso) GenNewPopPSO(particleSet []basic_class.BasicSolution, process
 		}
 
 		// 计算适应度
-		//offspring.Objective =  todo
+		offspring.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(offspring.Solution, self.CorFlag, self.PenFlag)
 		offspringSet = append(offspringSet, offspring)
 
 		// 更新最近点和最远点
 		self.UpdateReference(offspring)
 
 		// 更新pBest
-		//if  {
-		//	basic_class.Copy(offspring, &self.PBest[i])
-		//} todo
+		if self.BasicMooFunc.ParetoDominatesMin(offspring.Objective, self.PBest[i].Objective) {
+			basic_class.Copy(offspring, &self.PBest[i])
+		}
 	}
 
 	// 更新PSet，为下一次迭代用
@@ -191,7 +193,13 @@ func (self *MMPso) UpdateEXA(particleSet []basic_class.BasicSolution) {
 			if j > len(self.Exa) {
 				break
 			}
-			// todo
+			if self.BasicMooFunc.ParetoDominatesMin(particleSet[i].Objective, self.Exa[j].Objective) {
+				self.Exa = append(self.Exa[:j], self.Exa[j:]...)
+				j--
+			} else if self.BasicMooFunc.ParetoDominatesMin(self.Exa[j].Objective, particleSet[i].Objective) {
+				domF = true
+				break
+			}
 			j++
 		}
 		// 如果新解particleSet[i]不被支配，则添加进EXA
@@ -226,7 +234,7 @@ func (self *MMPso) UpdateEXA(particleSet []basic_class.BasicSolution) {
 }
 
 // 两点交叉、变异算法
-func (self *MMPso) GenNewPopBX(particleSet []basic_class.BasicSolution, processNum int, taskNumPro int) []basic_class.BasicSolution {
+func (self *MMPso) GenNewPopBX(particleSet []basic_class.BasicSolution) []basic_class.BasicSolution {
 	var offspringSet []basic_class.BasicSolution
 	i := 0
 	for {
@@ -252,8 +260,8 @@ func (self *MMPso) GenNewPopBX(particleSet []basic_class.BasicSolution, processN
 		parent2 := particleSet[l]
 
 		index := 0
-		for p := 0; p < processNum; p++ {
-			for j := 0; j < taskNumPro; j++ {
+		for p := 0; p < basic_class.ProcessNum; p++ {
+			for j := 0; j < basic_class.TaskNumPro; j++ {
 				if Randomfloat64() < 0.5 {
 					offspring.V[index] = parent1.V[index]
 					offspring.X[index] = parent1.X[index]
@@ -276,7 +284,7 @@ func (self *MMPso) GenNewPopBX(particleSet []basic_class.BasicSolution, processN
 		}
 
 		// 计算适应度
-		// offspring.Objective =  todo
+		offspring.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(offspring.Solution, self.CorFlag, self.PenFlag)
 
 		// 更新最近点和最远点
 		self.UpdateReference(*offspring)
@@ -309,7 +317,7 @@ func (self *MMPso) FindFrontMinNoCon(inds []basic_class.BasicSolution) []basic_c
 			if self.BasicMooFunc.ParetoDominatesMin(frontmember.Objective, ind.Objective) {
 				noOneWasBetter = false
 				break
-			} else if self.BasicMooFunc.PareParetoDominatesMin(ind.Objective, frontmember.Objective) {
+			} else if self.BasicMooFunc.ParetoDominatesMin(ind.Objective, frontmember.Objective) {
 				front = append(front[:comfrontNum], front[comfrontNum:]...)
 			} else {
 				comfrontNum++
@@ -367,8 +375,8 @@ func (self *MMPso) CalPopFit(particleSet []basic_class.BasicSolution) {
 
 func (self *MMPso) CalCd(particleSet []basic_class.BasicSolution) []float64 {
 	popNum := len(particleSet)
-	var cd []float64  // 存储收敛性cd
-	var sde []float64 // 存储每个解的收敛性度量
+	cd := make([]float64, popNum)  // 存储收敛性cd
+	sde := make([]float64, popNum) // 存储每个解的收敛性度量
 	for i := 0; i < popNum; i++ {
 		cd = append(cd, 0.0)
 		sde = append(cd, 0.0)
@@ -381,7 +389,7 @@ func (self *MMPso) CalCd(particleSet []basic_class.BasicSolution) []float64 {
 		for j := 0; j < popNum; j++ {
 			if i != j {
 				var sdeij float64
-				for objNum := 0; objNum < Form1.nrObj; objNum++ {
+				for objNum := 0; objNum < basic_class.NrObj; objNum++ {
 					delF := particleSet[j].Objective[objNum] - particleSet[i].Objective[objNum]
 					if delF > 0 {
 						sdeij += math.Pow(delF, 2)
@@ -410,20 +418,20 @@ func (self *MMPso) CalCd(particleSet []basic_class.BasicSolution) []float64 {
 // 计算多样性cv[i] 公式（7）、（6）//（6）计算Cv收敛性距离（7）计算dis欧式距离
 func (self *MMPso) CalCv(particleSet []basic_class.BasicSolution) []float64 {
 	popNum := len(particleSet)
-	var cv []float64
-	var dis []float64
+	cv := make([]float64, popNum)
+	dis := make([]float64, popNum)
 
 	// Step1:计算dis 公式(7)
 	for i := 0; i < popNum; i++ {
 		a := 0.0
-		for objNum := 0; objNum < Form1.nrObj; objNum++ {
+		for objNum := 0; objNum < basic_class.NrObj; objNum++ {
 			a += math.Pow(particleSet[i].Objective[objNum]-self.IdealPoint[objNum], 2)
 		}
 		dis[i] = math.Sqrt(a)
 	}
 
 	// Step2:计算cv 公式(6)
-	b := math.Sqrt(Form1.nrObj)
+	b := math.Sqrt(float64(basic_class.NrObj))
 	for i := 0; i < popNum; i++ {
 		cv[i] = 1 - dis[i]/b
 	}
@@ -446,13 +454,13 @@ func (self *MMPso) CalD1(particleSet []basic_class.BasicSolution) []float64 {
 	var d1 []float64 // 存储d1
 
 	lenv := 0.0
-	for objNum := 0; objNum < Form1.nrObj; objNum++ {
+	for objNum := 0; objNum < basic_class.NrObj; objNum++ {
 		lenv += math.Pow(self.NarPoint[objNum]-self.IdealPoint[objNum], 2)
 	}
 
 	for i := 0; i < popNum; i++ {
 		mul := 0.0
-		for objNum := 0; objNum < Form1.nrObj; objNum++ {
+		for objNum := 0; objNum < basic_class.NrObj; objNum++ {
 			mul += (particleSet[i].Objective[objNum] - self.IdealPoint[objNum]) * (self.NarPoint[objNum] - self.IdealPoint[objNum])
 		}
 	}
@@ -462,14 +470,11 @@ func (self *MMPso) CalD1(particleSet []basic_class.BasicSolution) []float64 {
 // 计算d2[i] 公式（9）垂直距离
 func (self *MMPso) CalD2(particleSet []basic_class.BasicSolution, d1 []float64) []float64 {
 	popNum := len(particleSet)
-	var d2 []float64 // 存储d2
-	for i := 0; i < popNum; i++ {
-		d2 = append(d2, 0.0)
-	}
+	d2 := make([]float64, popNum)
 
 	for i := 0; i < popNum; i++ {
 		mul := 0.0
-		for objNum := 0; objNum < Form1.nrObj; objNum++ {
+		for objNum := 0; objNum < basic_class.NrObj; objNum++ {
 			mul += math.Pow(particleSet[i].Objective[objNum]-self.IdealPoint[objNum], 2)
 		}
 		d2[i] = math.Sqrt(mul - math.Pow(d1[i], 2))
