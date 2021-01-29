@@ -1,0 +1,8 @@
+0	Time	0	0	2
+1	Cost	0	0	0
+2	Reputation	1	1	3
+3	successRate	1	1	3
+4	Available	1	1	3
+5	Attribute1	1	1	3
+6	Attribute2	0	0	2
+7	Attribute3	0	0	0

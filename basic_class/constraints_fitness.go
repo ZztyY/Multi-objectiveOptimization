@@ -1,6 +1,8 @@
 package basic_class
 
-import "math"
+import (
+	"math"
+)
 
 type ConstraintsFitness struct {
 }

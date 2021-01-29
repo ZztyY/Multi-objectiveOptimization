@@ -47,6 +47,10 @@ func (self *MMPso) Init(popSize int, totalFunc int, parallelFunc int, generation
 	self.TotalFunc = totalFunc
 	self.ParallelFunc = parallelFunc
 	self.Generation = generation
+	self.IdealPoint = make([]float64, basic_class.NrObj)
+	self.NarPoint = make([]float64, basic_class.NrObj)
+	self.GBest = *new(basic_class.BasicSolution)
+	self.GBest.GenBasicSolution(basic_class.ProcessNum, basic_class.TaskNumPro)
 	self.W = w
 	self.C1 = c1
 	self.C2 = c2
@@ -120,6 +124,7 @@ func (self *MMPso) UpdateEXAIni(particleSet []basic_class.BasicSolution) {
 	// 更新pbest
 	for i := 0; i < self.PopSize; i++ {
 		temp := new(basic_class.BasicSolution)
+		temp.GenBasicSolution(basic_class.ProcessNum, basic_class.TaskNumPro)
 		basic_class.Copy(particleSet[i], temp)
 		self.PBest = append(self.PBest, *temp)
 	}
@@ -129,6 +134,7 @@ func (self *MMPso) UpdateEXAIni(particleSet []basic_class.BasicSolution) {
 	front = self.FindFrontMinNoCon(particleSet)
 	for i := 0; i < len(front); i++ {
 		temp := new(basic_class.BasicSolution)
+		temp.GenBasicSolution(basic_class.ProcessNum, basic_class.TaskNumPro)
 		basic_class.Copy(front[i], temp)
 		self.Exa = append(self.Exa, *temp)
 	}
@@ -149,6 +155,7 @@ func (self *MMPso) GenNewPopPSO(particleSet []basic_class.BasicSolution) []basic
 	offspringSet := make([]basic_class.BasicSolution, self.PopSize)
 	for i := 0; i < self.PopSize; i++ {
 		var offspring basic_class.BasicSolution
+		offspring.GenBasicSolution(basic_class.ProcessNum, basic_class.TaskNumPro)
 		parent := particleSet[i]
 		index := 0
 		for p := 0; p < basic_class.ProcessNum; p++ {
@@ -190,7 +197,7 @@ func (self *MMPso) UpdateEXA(particleSet []basic_class.BasicSolution) {
 		domF := false
 		j := 0
 		for {
-			if j > len(self.Exa) {
+			if j >= len(self.Exa) {
 				break
 			}
 			if self.BasicMooFunc.ParetoDominatesMin(particleSet[i].Objective, self.Exa[j].Objective) {
@@ -308,7 +315,7 @@ func (self *MMPso) FindFrontMinNoCon(inds []basic_class.BasicSolution) []basic_c
 		// iterate over the entire front
 		comfrontNum := 0
 		for {
-			if comfrontNum > len(front) {
+			if comfrontNum >= len(front) {
 				break
 			}
 			frontmember := front[comfrontNum]
@@ -334,7 +341,7 @@ func (self *MMPso) FindFrontMinNoCon(inds []basic_class.BasicSolution) []basic_c
 func (self *MMPso) DouToInt1(value float64, index int) int {
 	outValue := -1
 	serCount := len(self.CanSerAPro[index])
-	a := int(math.Abs(value / float64(serCount)))
+	a := int(math.Abs(float64(int(value) % serCount)))
 	outValue = self.CanSerAPro[index][a]
 	return outValue
 }
@@ -451,7 +458,7 @@ func (self *MMPso) CalMean(particleSet []basic_class.BasicSolution, v []float64)
 // 计算d1[i] 公式（8）投影距离
 func (self *MMPso) CalD1(particleSet []basic_class.BasicSolution) []float64 {
 	popNum := len(particleSet)
-	var d1 []float64 // 存储d1
+	d1 := make([]float64, popNum) // 存储d1
 
 	lenv := 0.0
 	for objNum := 0; objNum < basic_class.NrObj; objNum++ {
@@ -463,6 +470,7 @@ func (self *MMPso) CalD1(particleSet []basic_class.BasicSolution) []float64 {
 		for objNum := 0; objNum < basic_class.NrObj; objNum++ {
 			mul += (particleSet[i].Objective[objNum] - self.IdealPoint[objNum]) * (self.NarPoint[objNum] - self.IdealPoint[objNum])
 		}
+		d1[i] = mul / math.Sqrt(lenv)
 	}
 	return d1
 }

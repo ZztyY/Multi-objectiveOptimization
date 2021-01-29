@@ -38,6 +38,7 @@ func (self *BasicSolution) GenBasicSolution(processNum int, taskNumPro int) {
 		self.Pos = append(self.CtnValue, 0.0)
 		self.V = append(self.CtnValue, 0.0)
 		self.X = append(self.CtnValue, 0.0)
+		self.STime = append(self.STime, 0.0)
 	}
 	self.Objective = []float64{}
 }

@@ -3,6 +3,7 @@
 dump.rdb
 .project
 .vscode
+desktop.ini
 
 # Binaries for programs and plugins
 *.exe
