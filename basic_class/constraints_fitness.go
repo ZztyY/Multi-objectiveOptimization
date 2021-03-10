@@ -161,7 +161,7 @@ func (self *ConstraintsFitness) CalFitnessMooNormalized(p []int, corFlag bool, p
 
 	// Step2:计算出目标函数的归一化QoS，先不考虑runtime情况
 	for i := 0; i < NrObj; i++ {
-		if Obj[i].ObjType == 0 {
+		if Obj[i].ObjType == 0 { // todo
 			objValue[i] = (qualMinMax[2*i][1] - objValue[i]) / (qualMinMax[2*i][1] - qualMinMax[2*i][0])
 		} else {
 			objValue[i] = (objValue[i] - qualMinMax[2*i][0]) / (qualMinMax[2*i][1] - qualMinMax[2*i][0])

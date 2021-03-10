@@ -55,8 +55,8 @@ func (self *MMPso) Init(popSize int, totalFunc int, parallelFunc int, generation
 	self.C1 = c1
 	self.C2 = c2
 	self.C3 = c3
-	self.CorFlag = false
-	self.PenFlag = false
+	self.CorFlag = true
+	self.PenFlag = true
 }
 
 func (self *MMPso) Run() {

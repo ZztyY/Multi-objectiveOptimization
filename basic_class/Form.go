@@ -112,6 +112,8 @@ func init() {
 		}
 	}
 
+	serviceAttributeDefinition()
+
 	ConNum = 20 // 约束个数
 	for i := 0; i < ConNum; i++ {
 		qosCon[i].Num = i
@@ -193,6 +195,139 @@ func init() {
 
 	runtimeState = true
 	iniExePlan.GenBasicSolution(ProcessNum, TaskNumPro)
+}
+
+func serviceAttributeDefinition() {
+	// 根据问题插入服务对应的活动编号，即b值，对多流程来说，编号为前i个流程*各流程活动数+第i个流程的第k个活动
+	for p := 0; p < ProcessNum; p++ {
+		for k := 0; k < TaskNumPro; k++ {
+			for j := 0; j < SerNumPtask; j++ {
+				servie[p*TaskNumPro*SerNumPtask+k*SerNumPtask+j].B = p*TaskNumPro + k
+				servie[p*TaskNumPro*SerNumPtask+k*SerNumPtask+j].Seq = j
+			}
+		}
+	}
+
+	// 计算最大最小流程值
+	calMQuality()
+
+	cc := 0
+	n := SerNumPtask * ProcessNum
+	for i := 0; i < n; i++ {
+		for {
+			if cc >= ProcessNum*SerNumPtask {
+				break
+			}
+			if servie[i].B == servie[n+cc].B {
+				for k := 0; k < NrObj; k++ {
+					if Obj[k].ObjType == 0 {
+						if servie[n+cc].QosMM[k]-servie[n+cc].Qos[k] > 0 {
+							servie[i].QosMM[k] = (servie[n+cc].QosMM[k] - servie[i].Qos[k]) / (servie[n+cc].QosMM[k] - servie[n+cc].Qos[k])
+						} else {
+							servie[i].QosMM[k] = 1
+						}
+					} else {
+						if servie[n+cc].QosMM[k]-servie[n+cc].Qos[k] > 0 {
+							servie[i].QosMM[k] = (servie[i].Qos[k] - servie[n+cc].QosMM[k]) / (servie[n+cc].QosMM[k] - servie[n+cc].Qos[k])
+						} else {
+							servie[i].QosMM[k] = 1
+						}
+					}
+				}
+				break
+			}
+			cc++
+		}
+	}
+
+	for i := 0; i < ProcessNum*TaskNumPro; i++ {
+		var ind []Service
+		for j := 0; j < SerNumPtask; j++ {
+			ind = append(ind, servie[i*SerNumPtask+j])
+		}
+		rankNum := Bm.PartitionIntoRanksService(ind)
+		for j := 0; j < SerNumPtask; j++ {
+			if rankNum == 1 {
+				servie[i*SerNumPtask+j].F = 1.1
+			} else {
+				servie[i*SerNumPtask+j].F = 1.1 - (1.1-1)*(servie[i*SerNumPtask+j].F-1)/(float64(rankNum)-1)
+			}
+		}
+	}
+}
+
+// 计算第i属性的最大、最小质量值
+func calMQuality() {
+	n := TaskNumPro * SerNumPtask * ProcessNum
+
+	// 初始化n到n + processNum * func服务，用于存储各个活动的最小服务qos、最大服务qosMM
+	for i := n; i < n+ProcessNum*TaskNumPro; i++ {
+		servie[i].B = i - n
+		servie[i].Qos = make([]float64, NrObj)
+		servie[i].QosMM = make([]float64, NrObj)
+		// 初始化为各活动的起始服务的QoS
+		for k := 0; k < NrObj; k++ {
+			servie[i].Qos[k] = servie[(i-n)*SerNumPtask].Qos[k]
+			servie[i].QosMM[k] = servie[(i-n)*SerNumPtask].Qos[k]
+		}
+	}
+
+	// 自候选的n个服务以后，存储了每个变迁中各属性的最好、最坏值
+	cc := 0
+	for i := 0; i < n; i++ {
+		if servie[n+cc].B == servie[i].B {
+			for k := 0; k < NrObj; k++ {
+				if servie[i].Qos[k] < servie[n+cc].Qos[k] {
+					servie[n+cc].Qos[k] = servie[i].Qos[k]
+				}
+				if servie[i].Qos[k] > servie[n+cc].QosMM[k] {
+					servie[n+cc].QosMM[k] = servie[i].Qos[k]
+				}
+			}
+		} else {
+			cc++
+		}
+	}
+
+	// 计算最好、最坏服务链组合
+	for k := 0; k < NrObj; k++ {
+		if Obj[k].AggreType_inPro == 0 {
+			qualMinMax[k][0] = 0
+			qualMinMax[k][1] = 0
+		} else if Obj[k].AggreType_inPro == 1 {
+			qualMinMax[k][0] = 1000000000
+			qualMinMax[k][1] = 1000000000
+		}
+	}
+
+	for p := 0; p < ProcessNum; p++ {
+		// 计算子流程p的最大、最小目标解
+		qsubPMin := make([]float64, NrObj) // 子流程p的最小目标解
+		qsubPMax := make([]float64, NrObj) // 子流程p的最大目标解
+		for k := 0; k < NrObj; k++ {
+			if Obj[k].AggreType_inPro == 0 {
+				qsubPMin[k] = 0
+				qsubPMax[k] = 0
+			} else if Obj[k].AggreType_inPro == 1 {
+				qsubPMin[k] = 1
+				qsubPMax[k] = 1
+			}
+		}
+
+		for i := 0; i < TaskNumPro; i++ {
+			v := n + p*TaskNumPro + i
+			for k := 0; k < NrObj; k++ {
+				qsubPMin[k] = AggQos(qsubPMin[k], Obj[k].AggreType_inPro, servie[v].Qos[k])
+				qsubPMax[k] = AggQos(qsubPMax[k], Obj[k].AggreType_inPro, servie[v].QosMM[k])
+			}
+		}
+
+		// 统计全局最大、最小流程解，并保存到qualMinMax
+		for k := 0; k < NrObj; k++ {
+			qualMinMax[k][0] = AggQos(qualMinMax[k][0], Obj[k].AggreType_betPro, qsubPMin[k])
+			qualMinMax[k][1] = AggQos(qualMinMax[k][1], Obj[k].AggreType_betPro, qsubPMax[k])
+		}
+	}
 }
 
 // ===========Form4===========

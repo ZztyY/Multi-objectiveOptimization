@@ -61,3 +61,52 @@ func (self *BasicMooFunc) ParetoDominatesMin(tempFit1 []float64, tempFit2 []floa
 	}
 	return f
 }
+
+// 获得各组帕累托前沿rank,每次存储第i层前沿
+func (self *BasicMooFunc) PartitionIntoRanksService(inds []Service) int {
+	rankNum := 1
+	for {
+		if len(inds) <= 0 {
+			break
+		}
+		var front []Service
+		var nonFront []Service
+
+		front = append(front, inds[0]) // 先把0号元素放进去
+		servie[inds[0].Num].F = float64(rankNum)
+
+		// iterate over all the remaining individuals
+		for i := 1; i < len(inds); i++ {
+			ind := inds[i]
+			noOneWasBatter := true
+
+			// iterate over the entire front
+			comfrontNum := 0
+			for {
+				if comfrontNum >= len(front) {
+					break
+				}
+				frontMember := front[comfrontNum]
+
+				if Bm.ParetoDominatesService(frontMember.Qos, ind.Qos) {
+					nonFront = append(nonFront, ind)
+					noOneWasBatter = false
+					break // ind为非前沿解
+				} else if Bm.ParetoDominatesService(ind.Qos, frontMember.Qos) {
+					front = append(front[:comfrontNum], front[comfrontNum+1:]...) // todo ?
+					nonFront = append(nonFront, frontMember)
+				} else {
+					comfrontNum++
+				}
+			}
+			if noOneWasBatter {
+				front = append(front, ind)
+				servie[ind.Num].F = float64(rankNum)
+			}
+		}
+		// build inds out of remainder
+		inds = nonFront
+		rankNum++
+	}
+	return rankNum - 1
+}
