@@ -152,7 +152,7 @@ func Randomfloat64() float64 {
 
 // PSO算法
 func (self *MMPso) GenNewPopPSO(particleSet []basic_class.BasicSolution) []basic_class.BasicSolution {
-	offspringSet := make([]basic_class.BasicSolution, self.PopSize)
+	var offspringSet []basic_class.BasicSolution
 	for i := 0; i < self.PopSize; i++ {
 		var offspring basic_class.BasicSolution
 		offspring.GenBasicSolution(basic_class.ProcessNum, basic_class.TaskNumPro)
@@ -201,7 +201,7 @@ func (self *MMPso) UpdateEXA(particleSet []basic_class.BasicSolution) {
 				break
 			}
 			if self.BasicMooFunc.ParetoDominatesMin(particleSet[i].Objective, self.Exa[j].Objective) {
-				self.Exa = append(self.Exa[:j], self.Exa[j:]...)
+				self.Exa = append(self.Exa[:j], self.Exa[j+1:]...)
 				j--
 			} else if self.BasicMooFunc.ParetoDominatesMin(self.Exa[j].Objective, particleSet[i].Objective) {
 				domF = true
@@ -265,6 +265,9 @@ func (self *MMPso) GenNewPopBX(particleSet []basic_class.BasicSolution) []basic_
 		offspring := new(basic_class.BasicSolution)
 		parent1 := particleSet[k]
 		parent2 := particleSet[l]
+		offspring.V = make([]float64, len(parent1.V))
+		offspring.X = make([]float64, len(parent1.X))
+		offspring.Solution = make([]int, len(parent1.Solution))
 
 		index := 0
 		for p := 0; p < basic_class.ProcessNum; p++ {
@@ -325,7 +328,7 @@ func (self *MMPso) FindFrontMinNoCon(inds []basic_class.BasicSolution) []basic_c
 				noOneWasBetter = false
 				break
 			} else if self.BasicMooFunc.ParetoDominatesMin(ind.Objective, frontmember.Objective) {
-				front = append(front[:comfrontNum], front[comfrontNum:]...)
+				front = append(front[:comfrontNum], front[comfrontNum+1:]...) // todo
 			} else {
 				comfrontNum++
 			}

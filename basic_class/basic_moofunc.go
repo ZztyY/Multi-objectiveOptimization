@@ -110,3 +110,47 @@ func (self *BasicMooFunc) PartitionIntoRanksService(inds []Service) int {
 	}
 	return rankNum - 1
 }
+
+func (self *BasicMooFunc) ParetoDominatesWithConstraints(tempfit1 []float64, tempfit2 []float64) bool {
+	f := true
+	sNum := 0
+	// 若各目标值相同，则不能算支配
+	for i := 0; i < len(tempfit1); i++ {
+		if math.Abs(tempfit1[i]-tempfit2[i]) < 0.0000001 {
+			sNum++
+		}
+	}
+	if sNum == len(tempfit1) {
+		return false
+	}
+
+	// 判断是否有约束违反
+	if tempfit1[NrObj] == 1 && tempfit2[NrObj] == 1 {
+		// 表明没有约束违反，根据目标集合判断支配关系
+		// 如果不是相同的情况下，分别判断时间、成本越小越好
+		for i := 0; i < NrObj; i++ {
+			if Obj[i].ObjType == 0 {
+				if tempfit1[i] > tempfit2[i] {
+					f = false
+					return f
+				}
+			} else {
+				if tempfit1[i] < tempfit2[i] {
+					f = false
+					return f
+				}
+			}
+		}
+	} else if tempfit1[NrObj] == 1 && tempfit2[NrObj] == 0 {
+		return true
+	} else if tempfit1[NrObj] == 0 && tempfit2[NrObj] == 1 {
+		return false
+	} else {
+		if tempfit1[NrObj] > tempfit2[NrObj] {
+			return true
+		} else {
+			return false
+		}
+	}
+	return f
+}

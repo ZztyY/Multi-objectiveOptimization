@@ -44,6 +44,9 @@ func (self *BasicSolution) GenBasicSolution(processNum int, taskNumPro int) {
 }
 
 func Copy(fromSol BasicSolution, toSol *BasicSolution) {
+	toSol.Solution = make([]int, len(fromSol.Solution))
+	toSol.X = make([]float64, len(fromSol.X))
+	toSol.V = make([]float64, len(fromSol.V))
 	for i := 0; i < len(fromSol.Solution); i++ {
 		toSol.Solution[i] = fromSol.Solution[i]
 		toSol.X[i] = fromSol.X[i]

@@ -4,8 +4,6 @@ import (
 	"Multi-objectiveOptimization/algorithms"
 	"fmt"
 	"github.com/chfenger/goNum"
-	"io/ioutil"
-	"strings"
 )
 
 func Value(m map[string]interface{}) float64 {
@@ -35,12 +33,17 @@ func main() {
 	//bestX, bestY := a.Run()
 	//fmt.Print(bestX, bestY)
 
-	objectiveFile, _ := ioutil.ReadFile("./data/Objective.txt")
-	s := string(objectiveFile)
-	ss := strings.Split(s, "\n")
-	fmt.Println(strings.Split(ss[0], "\t")[1])
+	//objectiveFile, _ := ioutil.ReadFile("./data/Objective.txt")
+	//s := string(objectiveFile)
+	//ss := strings.Split(s, "\n")
+	//fmt.Println(strings.Split(ss[0], "\t")[2])
 
 	var mmpso algorithms.MMPso
 	mmpso.Init(50, 50, 50, 50, 0.1, 0.1, 0.1, 0.1)
 	mmpso.Run()
+	for _, v := range mmpso.Exa {
+		fmt.Println(v.Solution, v.Objective, v.X, v.V)
+	}
+	fmt.Println(mmpso.GBest)
+	fmt.Println(mmpso.PBest)
 }

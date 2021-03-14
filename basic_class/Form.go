@@ -86,6 +86,10 @@ func init() {
 		Obj[i].AggreType_inPro = util.StrToInt(line[3])
 		Obj[i].AggreType_betPro = util.StrToInt(line[4])
 	}
+	Obj[0].AggreType_betPro = 2
+	Obj[1].AggreType_betPro = 0
+	Obj[2].AggreType_betPro = 3
+	Obj[3].AggreType_betPro = 3
 
 	SerNumPtask = 20
 	soaFile, _ := ioutil.ReadFile("./data/SOA.txt")
