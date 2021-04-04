@@ -1,5 +1,7 @@
 package basic_class
 
+import "math"
+
 type BasicSolution struct {
 	Solution      []int     // path1 存储所选服务
 	Objective     []float64 // 存储目标值（适应度）
@@ -28,6 +30,7 @@ type BasicSolution struct {
 	Angle         float64
 	RealGenes     []float64 // decision variable
 	STime         []float64 // 各活动的开始时间
+	Selected      bool
 }
 
 func (self *BasicSolution) GenBasicSolution(processNum int, taskNumPro int) {
@@ -69,4 +72,44 @@ func (self *BasicSolution) GetRank() int {
 
 func (self *BasicSolution) SetRank(rank int) {
 	self.Rank = rank
+}
+
+func (self *BasicSolution) CopyTo(copyto *BasicSolution) {
+	copyto.FitnessValue = self.FitnessValue
+	copyto.TchVal = self.TchVal
+	copyto.SubProbNo = self.SubProbNo
+	copyto.Trail = self.Trail
+	copyto.Probability = self.Probability
+	copyto.Angle = self.Angle
+	copyto.Rank = self.Rank
+
+	for i := 0; i < len(copyto.Solution); i++ {
+		copyto.Solution[i] = self.Solution[i]
+	}
+
+	for i := 0; i < len(self.Objective); i++ {
+		copyto.Objective = append(copyto.Objective, self.Objective[i])
+	}
+}
+
+func (self *BasicSolution) Dominates(another BasicSolution) bool {
+	flag := true
+	sNum := 0
+	// 若各目标值相同，则不能算支配
+	for i := 0; i < NrObj; i++ {
+		if math.Abs(self.Objective[i]-another.Objective[i]) < 0.0000001 {
+			sNum++
+		}
+	}
+	if sNum == NrObj {
+		return false
+	}
+
+	for i := 0; i < NrObj; i++ {
+		if self.Objective[i] > another.Objective[i] {
+			flag = false
+			return flag
+		}
+	}
+	return flag
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Multi-objectiveOptimization/algorithms"
+	"Multi-objectiveOptimization/MOEAs"
 	"fmt"
 	"github.com/chfenger/goNum"
 )
@@ -38,12 +38,19 @@ func main() {
 	//ss := strings.Split(s, "\n")
 	//fmt.Println(strings.Split(ss[0], "\t")[2])
 
-	var mmpso algorithms.MMPso
-	mmpso.Init(50, 50, 50, 50, 0.1, 0.1, 0.1, 0.1)
-	mmpso.Run()
-	for _, v := range mmpso.Exa {
-		fmt.Println(v.Solution, v.Objective, v.X, v.V)
+	//var mmpso algorithms.MMPso
+	//mmpso.Init(50, 50, 50, 50, 0.1, 0.1, 0.1, 0.1)
+	//mmpso.Run()
+	//for _, v := range mmpso.Exa {
+	//	fmt.Println(v.Solution, v.Objective, v.X, v.V)
+	//}
+	//fmt.Println(mmpso.GBest)
+	//fmt.Println(mmpso.PBest)
+	var nsga3 MOEAs.NSGA_3
+	nsga3.Init(50, 50, 50, 50, 0.1, 0.1, 0.1, 0.1)
+	nsga3.Run()
+	for _, v := range nsga3.MainPop {
+		fmt.Println(v.SubProbNo)
+		fmt.Println(v.TchVal)
 	}
-	fmt.Println(mmpso.GBest)
-	fmt.Println(mmpso.PBest)
 }
