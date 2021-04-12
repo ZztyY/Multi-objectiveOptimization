@@ -130,6 +130,7 @@ func (self *NSGA_3) InitWeight(m int) {
 	self.PopSize = len(self.Weights)
 }
 
+// 初始化邻居
 func (self *NSGA_3) InitNeighbour() {
 	self.NeighbourTable = make([][]int, self.PopSize) // 用一个种群规模大小的列表来存储邻居
 
