@@ -43,6 +43,7 @@ type NSGA_3 struct {
 	NeighbourTable     [][]int
 	MainPop            []basic_class.BasicSolution
 	TMinusOnePop       []basic_class.BasicSolution
+	TMinusTwoPop       []basic_class.BasicSolution
 	SubregionIdx_      [][]int // index matrix for subregion record，subregionIdx_[i,j]=1表示EXA中的第j个解属于权重向量i
 	RankIdx_           [][]int // index matrix for the non-domination levels，rankIdx_[i,j]=1表示EXA中的第j个解属于第i个perato层
 	Nr                 int
@@ -338,6 +339,7 @@ func (self *NSGA_3) Terminated() bool {
 func (self *NSGA_3) Run() {
 	self.StartTime = time.Now()
 	self.TMinusOnePop = self.MainPop
+	self.TMinusTwoPop = self.MainPop
 	// todo NSGAⅢ
 	for {
 		if self.Terminated() {
@@ -351,7 +353,13 @@ func (self *NSGA_3) Run() {
 			self.UpdateReference(offspring)
 		}
 
-		self.MF1(offsPop)
+		// 六种信息反馈模型
+		//offsPop = self.MF1(offsPop)
+		//offsPop = self.MR1(offsPop)
+		//offsPop = self.MF2(offsPop)
+		//offsPop = self.MR2(offsPop)
+		//offsPop = self.MF3(offsPop)
+		offsPop = self.MR3(offsPop)
 
 		var Pop []basic_class.BasicSolution
 		for k, _ := range self.MainPop {
@@ -438,22 +446,85 @@ func (self *NSGA_3) MR1(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 	return res
 }
 
-// 信息反馈M-F2 todo 服务编号溢出
+// 信息反馈M-F2
 func (self *NSGA_3) MF2(u []basic_class.BasicSolution) []basic_class.BasicSolution {
 	self.CalPopFit(u)
 	self.CalPopFit(self.MainPop)
 	var res []basic_class.BasicSolution
 	for k, _ := range u {
 		var temp basic_class.BasicSolution
-		a1 := (self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit) / 2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit)
-		a2 := (u[k].TotalFit + self.TMinusOnePop[k].TotalFit) / 2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit)
-		a3 := (u[k].TotalFit + self.MainPop[k].TotalFit) / 2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit)
+		a1 := (self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit))
+		a2 := (u[k].TotalFit + self.TMinusOnePop[k].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit))
+		a3 := (u[k].TotalFit + self.MainPop[k].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit))
 		for j, _ := range u[k].Solution {
 			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])+a3*float64(self.TMinusOnePop[k].Solution[j])))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
 	}
+	self.TMinusOnePop = self.MainPop
+	return res
+}
+
+func (self *NSGA_3) MR2(u []basic_class.BasicSolution) []basic_class.BasicSolution {
+	self.CalPopFit(u)
+	self.CalPopFit(self.MainPop)
+	var res []basic_class.BasicSolution
+	for k, _ := range u {
+		var temp basic_class.BasicSolution
+		m := util.RandomNumber(0, len(self.MainPop)-1) // 此处m为公式中的k,随机整数生成区别于M-F2
+		a1 := (self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit))
+		a2 := (u[k].TotalFit + self.TMinusOnePop[m].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit))
+		a3 := (u[k].TotalFit + self.MainPop[m].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit))
+		for j, _ := range u[k].Solution {
+			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])+a3*float64(self.TMinusOnePop[m].Solution[j])))
+		}
+		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
+		res = append(res, temp)
+	}
+	self.TMinusOnePop = self.MainPop
+	return res
+}
+
+func (self *NSGA_3) MF3(u []basic_class.BasicSolution) []basic_class.BasicSolution {
+	self.CalPopFit(u)
+	self.CalPopFit(self.MainPop)
+	var res []basic_class.BasicSolution
+	for k, _ := range u {
+		var temp basic_class.BasicSolution
+		a1 := (self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit))
+		a2 := (u[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit))
+		a3 := (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusTwoPop[k].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit))
+		a4 := (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit))
+		for j, _ := range u[k].Solution {
+			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])+a3*float64(self.TMinusOnePop[k].Solution[j])+a4*float64(self.TMinusTwoPop[k].Solution[j])))
+		}
+		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
+		res = append(res, temp)
+	}
+	self.TMinusTwoPop = self.TMinusOnePop
+	self.TMinusOnePop = self.MainPop
+	return res
+}
+
+func (self *NSGA_3) MR3(u []basic_class.BasicSolution) []basic_class.BasicSolution {
+	self.CalPopFit(u)
+	self.CalPopFit(self.MainPop)
+	var res []basic_class.BasicSolution
+	for k, _ := range u {
+		var temp basic_class.BasicSolution
+		m := util.RandomNumber(0, len(self.MainPop)-1) // 此处m为公式中的k,随机整数生成区别于M-F2
+		a1 := (self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit))
+		a2 := (u[k].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit))
+		a3 := (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusTwoPop[m].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit))
+		a4 := (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit))
+		for j, _ := range u[k].Solution {
+			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])+a3*float64(self.TMinusOnePop[m].Solution[j])+a4*float64(self.TMinusTwoPop[m].Solution[j])))
+		}
+		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
+		res = append(res, temp)
+	}
+	self.TMinusTwoPop = self.TMinusOnePop
 	self.TMinusOnePop = self.MainPop
 	return res
 }
