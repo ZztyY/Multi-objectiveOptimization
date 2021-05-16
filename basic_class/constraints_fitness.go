@@ -12,15 +12,15 @@ func (self *ConstraintsFitness) CalIniConstraint(p []int, corFlag bool) float64 
 	service1 := self.UpdateserviceByCor(p, corFlag)
 	consNum = 1
 	for i := 0; i < ConNum; i++ {
-		stask := qosCon[i].StActivity
-		etask := qosCon[i].EndActivity
+		stask := QosCon[i].StActivity
+		etask := QosCon[i].EndActivity
 		if etask < CpTask {
 			continue
 		}
-		QoSType := qosCon[i].QoSType
+		QoSType := QosCon[i].QoSType
 		// pNum := qosCon[i].ProcessNum // 所属流程
-		expbound := qosCon[i].ExpectBound
-		ubound := qosCon[i].UlBound
+		expbound := QosCon[i].ExpectBound
+		ubound := QosCon[i].UlBound
 		actQos := 0.0
 		if Obj[QoSType].ObjType == 1 {
 			actQos = 1
@@ -82,9 +82,9 @@ func (self *ConstraintsFitness) CalFitnessMoo(p []int, corFlag bool, penFlag boo
 		if penFlag {
 			for j := CpTask; j < ProcessNum*TaskNumPro; j++ {
 				if p[j] != executionPlan.Solution[j] { // 调换服务惩罚
-					penalty += servie[executionPlan.Solution[j]].ChaPenalty
+					penalty += Servie[executionPlan.Solution[j]].ChaPenalty
 				} else if st[j] != executionPlan.STime[j] { //时间推移惩罚
-					penalty += math.Abs(st[j]-executionPlan.STime[j]) * servie[executionPlan.Solution[j]].DevPenalty
+					penalty += math.Abs(st[j]-executionPlan.STime[j]) * Servie[executionPlan.Solution[j]].DevPenalty
 				}
 			}
 		}
@@ -110,18 +110,18 @@ func (self *ConstraintsFitness) CalDCCorConstraint(p []int) float64 {
 	consNum := 1.0
 	// 计算dependence and conflict 约束
 	for i := 0; i < DcCorNum; i++ {
-		if dcCor[i].Flag {
-			s1 := dcCor[i].S1 // 取出相关服务组合
-			s2 := dcCor[i].S2
+		if DcCor[i].Flag {
+			s1 := DcCor[i].S1 // 取出相关服务组合
+			s2 := DcCor[i].S2
 
-			if p[servie[s1].B] == s1 { // 如果选中s1
-				if dcCor[i].DcType == 1 { // dependence 约束
-					if p[servie[s2].B] != s2 {
+			if p[Servie[s1].B] == s1 { // 如果选中s1
+				if DcCor[i].DcType == 1 { // dependence 约束
+					if p[Servie[s2].B] != s2 {
 						consNum = 0
 						break
 					}
 				} else {
-					if p[servie[s2].B] == s2 {
+					if p[Servie[s2].B] == s2 {
 						consNum = 0
 						break
 					}
@@ -140,18 +140,18 @@ func (self *ConstraintsFitness) CalFitnessMooNormalized(p []int, corFlag bool, p
 	objValue := AggQosEP(p, service1)
 
 	// 如果为执行过程中的调整，则考虑与初始计划的偏差
-	if runtimeState {
+	if RuntimeState {
 		// Step1.1 计算计划中各活动的执行时间
 		st := CalStTime(p, service1)
 		// Step1.2 计算与原execution plan 偏移的惩罚量
 		fitMod1 := 0.0
 		fitMod2 := 0.0
 		for i := 0; i < ActNum; i++ {
-			if exeState.SerNum[i] < 0 { // 表明该活动要重新安排
-				if p[i] != iniExePlan.Solution[i] {
-					fitMod1 = fitMod1 + servie[iniExePlan.Solution[i]].ChaPenalty
-				} else if st[i]-iniExePlan.STime[i] > 0.001 || iniExePlan.STime[i]-st[i] > 0.001 {
-					fitMod2 = fitMod2 + servie[iniExePlan.Solution[i]].DevPenalty*math.Abs(st[i]-iniExePlan.STime[i])
+			if ExeState.SerNum[i] < 0 { // 表明该活动要重新安排
+				if p[i] != IniExePlan.Solution[i] {
+					fitMod1 = fitMod1 + Servie[IniExePlan.Solution[i]].ChaPenalty
+				} else if st[i]-IniExePlan.STime[i] > 0.001 || IniExePlan.STime[i]-st[i] > 0.001 {
+					fitMod2 = fitMod2 + Servie[IniExePlan.Solution[i]].DevPenalty*math.Abs(st[i]-IniExePlan.STime[i])
 				}
 			}
 		}
@@ -175,24 +175,24 @@ func (self *ConstraintsFitness) UpdateserviceByCor(p []int, corFlag bool) []Serv
 	service1 := make([]Service, ProcessNum*TaskNumPro*SerNumPtask)
 	// 已执行活动
 	for v := 0; v < CpTask; v++ {
-		service1[p[v]] = TransService(servie[p[v]]) // 第v个活动选中的服务
+		service1[p[v]] = TransService(Servie[p[v]]) // 第v个活动选中的服务
 	}
 
 	for v := CpTask; v < ProcessNum*TaskNumPro; v++ {
-		service1[p[v]] = TransService(servie[p[v]]) // 第v个活动选中的服务
+		service1[p[v]] = TransService(Servie[p[v]]) // 第v个活动选中的服务
 
 		if corFlag {
 			for j := 0; j < QoSCorNum; j++ {
-				if cor[j].S2 == p[v] {
-					if p[servie[cor[j].S1].B] == cor[j].S1 {
-						qt := cor[j].Q
+				if Cor[j].S2 == p[v] {
+					if p[Servie[Cor[j].S1].B] == Cor[j].S1 {
+						qt := Cor[j].Q
 						if Obj[qt].ObjType == 0 {
-							if service1[p[v]].Qos[qt] > cor[j].Value {
-								service1[p[v]].Qos[qt] = cor[j].Value
+							if service1[p[v]].Qos[qt] > Cor[j].Value {
+								service1[p[v]].Qos[qt] = Cor[j].Value
 							}
 						} else if Obj[qt].ObjType == 1 {
-							if service1[p[v]].Qos[qt] < cor[j].Value {
-								service1[p[v]].Qos[qt] = cor[j].Value
+							if service1[p[v]].Qos[qt] < Cor[j].Value {
+								service1[p[v]].Qos[qt] = Cor[j].Value
 							}
 						}
 					}

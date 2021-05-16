@@ -3,7 +3,6 @@ package algorithms
 import (
 	"Multi-objectiveOptimization/basic_class"
 	"Multi-objectiveOptimization/util"
-	"fmt"
 	"math"
 	"math/rand"
 	"time"
@@ -72,10 +71,7 @@ func (self *MMPso) Run() {
 		offspringSet := self.GenNewPopPSO(self.PSet) // 通过PSO算法对Pset初始解集操作生成后代offSpring
 
 		// 筛选前popsize个新解，放入pop，子代best
-		fmt.Println(len(self.Exa))
-		fmt.Println(len(offspringSet))
 		self.UpdateEXA(offspringSet)
-		fmt.Println(len(self.Exa))
 
 		// 根据EXA生成popsize个新解
 		SSet := self.GenNewPopBX(self.Exa) // 交叉变异

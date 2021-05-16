@@ -73,7 +73,7 @@ func (self *BasicMooFunc) PartitionIntoRanksService(inds []Service) int {
 		var nonFront []Service
 
 		front = append(front, inds[0]) // 先把0号元素放进去
-		servie[inds[0].Num].F = float64(rankNum)
+		Servie[inds[0].Num].F = float64(rankNum)
 
 		// iterate over all the remaining individuals
 		for i := 1; i < len(inds); i++ {
@@ -101,7 +101,7 @@ func (self *BasicMooFunc) PartitionIntoRanksService(inds []Service) int {
 			}
 			if noOneWasBatter {
 				front = append(front, ind)
-				servie[ind.Num].F = float64(rankNum)
+				Servie[ind.Num].F = float64(rankNum)
 			}
 		}
 		// build inds out of remainder

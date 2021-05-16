@@ -98,7 +98,7 @@ func (self *NSGA_3) Init(popSize int, totalFunc int, parallelFunc int, generatio
 		self.SubregionIdx_[k] = make([]int, self.PopSize+1)
 	}
 	for k := 0; k < self.PopSize; k++ {
-		self.SetLocation(self.MainPop[k])                                                             // 存储到offSpring.subProbNo，offSpring.angle
+		self.SetLocation(&self.MainPop[k])                                                            // 存储到offSpring.subProbNo，offSpring.angle
 		self.MainPop[k].TchVal = self.PbiScalarObj(self.MainPop[k].SubProbNo, self.MainPop[k], false) // 计算PBI值
 		self.SubregionIdx_[self.MainPop[k].SubProbNo][k] = 1                                          // 存储EXA集合中每个权重向量包含了哪些解
 	}
@@ -204,12 +204,12 @@ func Distance(weight1 []float64, weight2 []float64) float64 {
 	return math.Sqrt(sum)
 }
 
-func (self *NSGA_3) SetLocation(offspring basic_class.BasicSolution) {
+func (self *NSGA_3) SetLocation(offspring *basic_class.BasicSolution) {
 	theta := 100000000.0
 	idx := 0
 	var ta float64
 	for i := 0; i < len(self.Weights); i++ {
-		ta = self.GetAngle(i, offspring, false)
+		ta = self.GetAngle(i, *offspring, false)
 		if ta < theta {
 			theta = ta
 			idx = i
@@ -340,7 +340,6 @@ func (self *NSGA_3) Run() {
 	self.StartTime = time.Now()
 	self.TMinusOnePop = self.MainPop
 	self.TMinusTwoPop = self.MainPop
-	// todo NSGAⅢ
 	for {
 		if self.Terminated() {
 			break
@@ -359,7 +358,7 @@ func (self *NSGA_3) Run() {
 		//offsPop = self.MF2(offsPop)
 		//offsPop = self.MR2(offsPop)
 		//offsPop = self.MF3(offsPop)
-		offsPop = self.MR3(offsPop)
+		//offsPop = self.MR3(offsPop)
 
 		var Pop []basic_class.BasicSolution
 		for k, _ := range self.MainPop {
@@ -409,6 +408,23 @@ func (self *NSGA_3) Run() {
 	//self.ArrResult = self.Exa
 }
 
+// 选择解
+func (self *NSGA_3) SelectClose(canSerAPro []int, sol int) int {
+	res := sol
+	min := 10000
+	for _, v := range canSerAPro {
+		if v == sol {
+			res = sol
+			return res
+		}
+		if int(math.Abs(float64(v-sol))) < min {
+			min = int(math.Abs(float64(v - sol)))
+			res = v
+		}
+	}
+	return res
+}
+
 // 信息反馈M-F1,k=i
 func (self *NSGA_3) MF1(u []basic_class.BasicSolution) []basic_class.BasicSolution {
 	self.CalPopFit(u)
@@ -419,7 +435,7 @@ func (self *NSGA_3) MF1(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 		a1 := self.MainPop[k].TotalFit / (u[k].TotalFit + self.MainPop[k].TotalFit)
 		a2 := u[k].TotalFit / (u[k].TotalFit + self.MainPop[k].TotalFit)
 		for j, _ := range u[k].Solution {
-			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])))
+			temp.Solution = append(temp.Solution, self.SelectClose(self.CanSerAPro[j], int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j]))))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
@@ -438,7 +454,7 @@ func (self *NSGA_3) MR1(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 		a1 := self.MainPop[m].TotalFit / (u[k].TotalFit + self.MainPop[m].TotalFit)
 		a2 := u[k].TotalFit / (u[k].TotalFit + self.MainPop[m].TotalFit)
 		for j, _ := range u[k].Solution {
-			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])))
+			temp.Solution = append(temp.Solution, self.SelectClose(self.CanSerAPro[j], int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j]))))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
@@ -457,7 +473,7 @@ func (self *NSGA_3) MF2(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 		a2 := (u[k].TotalFit + self.TMinusOnePop[k].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit))
 		a3 := (u[k].TotalFit + self.MainPop[k].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit))
 		for j, _ := range u[k].Solution {
-			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])+a3*float64(self.TMinusOnePop[k].Solution[j])))
+			temp.Solution = append(temp.Solution, self.SelectClose(self.CanSerAPro[j], int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])+a3*float64(self.TMinusOnePop[k].Solution[j]))))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
@@ -477,7 +493,7 @@ func (self *NSGA_3) MR2(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 		a2 := (u[k].TotalFit + self.TMinusOnePop[m].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit))
 		a3 := (u[k].TotalFit + self.MainPop[m].TotalFit) / (2 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit))
 		for j, _ := range u[k].Solution {
-			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])+a3*float64(self.TMinusOnePop[m].Solution[j])))
+			temp.Solution = append(temp.Solution, self.SelectClose(self.CanSerAPro[j], int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])+a3*float64(self.TMinusOnePop[m].Solution[j]))))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
@@ -497,7 +513,7 @@ func (self *NSGA_3) MF3(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 		a3 := (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusTwoPop[k].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit))
 		a4 := (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[k].TotalFit + self.TMinusOnePop[k].TotalFit + self.TMinusTwoPop[k].TotalFit))
 		for j, _ := range u[k].Solution {
-			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])+a3*float64(self.TMinusOnePop[k].Solution[j])+a4*float64(self.TMinusTwoPop[k].Solution[j])))
+			temp.Solution = append(temp.Solution, self.SelectClose(self.CanSerAPro[j], int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[k].Solution[j])+a3*float64(self.TMinusOnePop[k].Solution[j])+a4*float64(self.TMinusTwoPop[k].Solution[j]))))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
@@ -519,7 +535,7 @@ func (self *NSGA_3) MR3(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 		a3 := (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusTwoPop[m].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit))
 		a4 := (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit) / (3 * (u[k].TotalFit + self.MainPop[m].TotalFit + self.TMinusOnePop[m].TotalFit + self.TMinusTwoPop[m].TotalFit))
 		for j, _ := range u[k].Solution {
-			temp.Solution = append(temp.Solution, int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])+a3*float64(self.TMinusOnePop[m].Solution[j])+a4*float64(self.TMinusTwoPop[m].Solution[j])))
+			temp.Solution = append(temp.Solution, self.SelectClose(self.CanSerAPro[j], int(a1*float64(u[k].Solution[j])+a2*float64(self.MainPop[m].Solution[j])+a3*float64(self.TMinusOnePop[m].Solution[j])+a4*float64(self.TMinusTwoPop[m].Solution[j]))))
 		}
 		temp.Objective = self.ConstraintsFitness.CalFitnessMooNormalized(temp.Solution, self.CorFlag, self.PenFlag)
 		res = append(res, temp)
@@ -532,7 +548,7 @@ func (self *NSGA_3) MR3(u []basic_class.BasicSolution) []basic_class.BasicSoluti
 func (self *NSGA_3) EnviromentSelection(pop []basic_class.BasicSolution) {
 	var result []basic_class.BasicSolution
 	dominatedSet0 := self.FastNonDominatedSort(pop)
-	if self.IsNormalization { // todo
+	if self.IsNormalization { //
 		self.UpdateNadirPoint(dominatedSet0[0])
 	}
 
